@@ -1,6 +1,0 @@
-{
-  "name": "nested",
-  "dependencies": {
-    "fvtt-types": "github:League-of-Foundry-Developers/foundry-vtt-types#main"
-  }
-}
