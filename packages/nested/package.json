@@ -1,14 +1,5 @@
 {
-  "name": "@lumphammer/shared-fvtt-bits",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "name": "nested",
   "dependencies": {
     "fvtt-types": "github:League-of-Foundry-Developers/foundry-vtt-types#main"
   },
