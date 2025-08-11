@@ -4,15 +4,10 @@ This is a minimal repo for a minimal repro of an issue I encountered with Renova
 
 ## The Issue
 
-Renovate generated a PR which upgraded the `packageManger` field (the root-level one, used by `corepack`) as follows:
+If `package.json` contains a direct github dependency, and also uses the `packageManager` field to specify an out of date package manager, Renovate throws an error while producing the PR.
 
-```
--   "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184"
+The message from Renovate in the PR looks like this:
 
-+   "packageManager": "pnpm@10.13.1"
-```
-
-Note the missing SHA512. As far as I can see, the hash is optional, but it caused the following error:
 
 > ⚠️ Artifact update problem
 >
@@ -32,6 +27,15 @@ Note the missing SHA512. As far as I can see, the hash is optional, but it cause
 > ```
 > Command failed: corepack use pnpm@10.13.1
 > ```
+
+
+```
+-   "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184"
+
++   "packageManager": "pnpm@10.13.1"
+```
+
+Note the missing SHA512. As far as I can see, the hash is optional, but it caused the following error:
 
 
 ## Manual Workaround
