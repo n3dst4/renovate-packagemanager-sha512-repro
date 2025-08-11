@@ -4,15 +4,10 @@ This is a minimal repo for a minimal repro of an issue I encountered with Renova
 
 ## The Issue
 
-Renovate generated a PR which upgraded the `packageManger` field (the root-level one, used by `corepack`) as follows:
+If `package.json` contains a direct github dependency on https://github.com/League-of-Foundry-Developers/foundry-vtt-types, and also uses the `packageManager` field to specify an out of date package manager, Renovate throws an error while producing the PR.
 
-```
--   "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184"
+The message from Renovate in the PR looks like this:
 
-+   "packageManager": "pnpm@10.13.1"
-```
-
-Note the missing SHA512. As far as I can see, the hash is optional, but it caused the following error:
 
 > ⚠️ Artifact update problem
 >
@@ -32,6 +27,16 @@ Note the missing SHA512. As far as I can see, the hash is optional, but it cause
 > ```
 > Command failed: corepack use pnpm@10.13.1
 > ```
+
+And the resulting PR looks like this:
+
+```
+-   "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184"
+
++   "packageManager": "pnpm@10.13.1"
+```
+
+Note the missing SHA512. As far as I can see, the hash is optional, but it's indicative that something went wrong.
 
 
 ## Manual Workaround
@@ -54,8 +59,45 @@ This updates the `packageManager` field to have the right hash and the PR procee
 
 ## Current investigation
 
-As far as I can see, the issue is caused by the presence of a GitHub dependency. I've experimented with many combinations of `{peerD,devD,d}ependencies` and as far as I have been able to establish, for some reason the existence of one GitHub dependency causes the update to `packageManager` to be done differently.
+The error occurs when the project contains a dependency on fvtt-types:
 
+```json
+"fvtt-types": "github:League-of-Foundry-Developers/foundry-vtt-types#main"
+```
+
+We get this in the Renovate logs:
+
+```
+Installing pnpm@10.14.0 in the project...
+
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /runner/cache/others/pnpm/store/v10
+  Virtual store is at:             node_modules/.pnpm
+...1018_9e07cd5b5728c9c3ad548bfdbcdedfd6 npm-install$ npm install
+...1018_9e07cd5b5728c9c3ad548bfdbcdedfd6 npm-install: npm warn deprecated intl-messageformat-parser@1.1.0: We've written a new parser that's 6x faster and is backwards compatible. Please use @formatjs/icu-messageformat-parser
+...1018_9e07cd5b5728c9c3ad548bfdbcdedfd6 npm-install: npm warn deprecated intl-relativeformat@1.1.0: This package has been deprecated, please see migration guide at 'https://**redacted**@11.5.2
+...1018_9e07cd5b5728c9c3ad548bfdbcdedfd6 npm-install: npm notice
+...1018_9e07cd5b5728c9c3ad548bfdbcdedfd6 npm-install: npm error A complete log of this run can be found in: /home/ubuntu/.npm/_logs/2025-08-11T12_59_56_416Z-debug-0.log
+...1018_9e07cd5b5728c9c3ad548bfdbcdedfd6 npm-install: Failed
+ ERR_PNPM_PREPARE_PACKAGE  Failed to prepare git-hosted package fetched from "https://**redacted**@league-of-foundry-developers/foundry-vtt-types@13.346.0 npm-install: `npm install`
+Exit status 1
+
+This error happened while installing a direct dependency of /tmp/renovate/repos/github/n3dst4/renovate-packagemanager-sha512-repro
+```
+
+Note how it's deferring to `npm install`, which is installing the dependencies with npm, noting a few deprecations, then erroring out. This is the root of the problem.
+
+This seems to be to do with fvtt-types 1. being a git dependency, and 2. having a `prepare` script. It uses it to run `husky`, which is a git hook handler system in JS.
+
+Running the hooks locally works fine.
+
+Using other git deps works fine.
+
+Upgrading pnpm using corepack works fine locally.
+
+It's only when the `npm install` thing is triggered on renovate that smoke is emitted.
+
+I am not investigating any further.
 
 
 ## Example PR
